@@ -87,8 +87,6 @@ do
     makeblastdb -in outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -dbtype prot -parse_seqids;
     blastn -query refs/GCF_022832545.1_ASM2283254v1_genomic.fna -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta > outputs/DB/$(basename ${i} _1.fastq.gz)-blastgene_info.txt
     tblastn -query refs/GCF_022832545.1_ASM2283254v1_protein.faa -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta > outputs/DB/$(basename ${i} _1.fastq.gz)-blastprot_info.txt
-    blastn -query refs/GCF_022832545.1_ASM2283254v1_genomic.fna -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -out outputs/DB/$(basename ${i} _1.fastq.gz).fasta.blastn -outfmt 6 -evalue "1e-75";
-    tblastn -query refs/GCF_022832545.1_ASM2283254v1_protein.faa -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -out outputs/DB/$(basename ${i} _1.fastq.gz).fasta.blastn -outfmt 6 -evalue "1e-75";
 done
 #tuomet skaičiuoju nuspėjamų genų kiekį ir overlap. RAST kadangi yra naršyklėje, tai iš ten tiesiog paimu nurodytus skaičius, GeneMarks failai mano pašte,
 #todėl apskaičiuoju naudodama ctrl+f('gene_id') ir išveda kiek iš viso tokių eilučių yra - tai lygu kiek yra genų, o blast rezultatus apskaičiuoju linux aplikoje, naudodama awk '{ print $1 }' blastgene_info.txt | sort -u | wc -l
