@@ -1,3 +1,4 @@
+#!/bin/sh
 #Gabija Genčiūtė
 #Parsisiunčiu failus iš ENA
 wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR204/ERR204044/ERR204044_1.fastq.gz
@@ -27,6 +28,7 @@ multiqc outputs/ .
 #############################################################################
 #genomų surinkimas naudojant spades ir abyss
 gunzip outputs/trimmed/*.gz
+mkdir ERR204044_abyss SRR15131330_abyss SRR18214264_abyss
 for i in inputs/*_1.fastq.gz;
 do 
     thrds=6
@@ -37,16 +39,16 @@ do
     #abyss-pe k=64 name=$(basename ${i} _1.fastq.gz) -C ${TO}$(basename ${i} _1.fastq.gz)_abyss in=${VR1} ${VR2}
     #nelabai man pavyko su šita eilute, todėl atskirai padariau kiekvieną
 done
-mkdir ERR204044_abyss SRR15131330_abyss SRR18214264_abyss
+
 abyss-pe k=64 name=ERR204044 -C ~/HW2/outputs/assembly/ERR204044_abyss in='~/HW2/outputs/trimmed/ERR204044_1_val_1.fq ~/HW2/outputs/trimmed/ERR204044_2_val_2.fq'
 abyss-pe k=64 name=SRR15131330 -C ~/HW2/outputs/assembly/SRR15131330_abyss in='~/HW2/outputs/trimmed/SRR15131330_1_val_1.fq ~/HW2/outputs/trimmed/SRR15131330_2_val_2.fq'
 abyss-pe k=64 name=SRR18214264 -C ~/HW2/outputs/assembly/SRR18214264_abyss in='~/HW2/outputs/trimmed/SRR18214264_1_val_1.fq ~/HW2/outputs/trimmed/SRR18214264_2_val_2.fq'
 
-#tada parsisunčiu ref. seką ir paleidžiu per usegalaxy.eu QUAST.
+#tada parsisunčiu ref. seką CP015498 ir paleidžiu per usegalaxy.eu QUAST.
 #QUAST parodė, jog patikimiausios sekos(pagal pateiktą heatmap'ą - mėlyniausios) yra sekos, kurios buvo surinktos SPADES programa. Šios sekos buvo didesniu procentu padengusios ref. genomą(77-82%)
-#Lyginant su abyss programa, kur rezultatai buvo 73-76%. Taip su spades programa rinktų genomų NG yra didesnis(geras ženklas), ir LG yra mažesnis(geras ženklas)
+#Lyginant su abyss programa, kur rezultatai buvo 73-76%. Taip pat su spades programa rinktų genomų NG yra didesnis(geras ženklas), ir LG yra mažesnis(geras ženklas)
 #SRR15131330 read'as turėjo panašius rezultatus ir renkant abyss programa, tačiau padengtumas 5% mažesnis reiškė, jog visi kiti rezultatai yra taip pat mažesni -
-#ilgis, kuris buvo sulygintas su ref. genomu ir kiti rezultatai(turiu omenyje, kad tai yra logiška)
+#ilgis, kuris buvo sulygintas su ref. genomu, ir kiti rezultatai(turiu omenyje, kad tai yra logiška)
 #blogiausius rezultatus pasiekė SRR18214264, rinktas abyss programa - pats mažiausias procentas - beveik 74%, sulygintas su ref. genomu ilgis - 1509876, darant su spades - 1534348
 #reziume - Spades programa sulygino daug geriau, nei abyss, nors ir kai kurie rezultatai abyss programa darant buvo šiek tiek geresni. Todėl map'insiu ir toliau naudosiu tik spades failus
 
@@ -55,22 +57,52 @@ do
     thrds=6
     VR1="outputs/trimmed/"$(basename ${i} _1.fastq.gz)"_1_val_1.fq"
     VR2="outputs/trimmed/"$(basename ${i} _1.fastq.gz)"_2_val_2.fq"
-    CTG="outputs/assembly/"$(basename ${i} _1.fastq.gz)"_spades~/contigs.fasta"
+    CTG="outputs/assembly/"$(basename ${i} _1.fastq.gz)"_spades/contigs.fasta"
     bwa index ${CTG}
     bwa mem -t ${thrds} ${CTG} ${VR1} ${VR2} | samtools view -b -@ ${thrds} - > outputs/map/$(basename ${i} _1.fastq.gz).bam
     samtools sort -@ ${thrds} outputs/map/$(basename ${i} _1.fastq.gz).bam -o outputs/map/$(basename ${i} _1.fastq.gz).sorted.bam
     samtools index outputs/map/$(basename ${i} _1.fastq.gz).sorted.bam
-    samtools stats outputs/map/$(basename ${i} _1.fastq.gz).sorted.bam > outputs/map/$(basename ${i} _1_val_1.fq.gz)_map_stats.txt
-
+    samtools flagstat outputs/map/$(basename ${i} _1.fastq.gz).sorted.bam > outputs/map/$(basename ${i} _1_val_1.fq.gz)_map_stats.txt
 done
+#fractions ir coverage(naudojant awk įrankį)
+#ERR204044 read'as: 99,62% dalies, 295.777
+#SRR15131330 read'as: 88.82% dalies, 1836.51
+#SRR18214264 read'as: 99.73% dalies, 276,785
+#ERR204* ir SRR182* - labai geri rezultatai, SRR151 - vidutiniškai, o coverage - labai per didelis??
 
-#ERR204044 read'as: Sumappinti ir suporuoti read'ai 6051166, iš jų teisingai suporuoti 5642528 - tai iš viso teisingai suporuotų read'ų procentas:92,9%
-#o klaidų dažnis 1.564908 e-03, vidutinė kokybė - 36,1
-#SRR15131330 read'as: Sumappinti ir suporuoti read'ai 28414530, iš jų teisingai suporuoti 25524904 - tai iš viso teisingai suporuotų read'ų procentas:89,5%
-#o klaidų dažnis 1.895909 e-03, vidutinė kokybė - 36,2 
-#SRR18214264 read'as: Sumappinti ir suporuoti read'ai 4273832, iš jų teisingai suporuoti 4185612 - tai iš viso teisingai suporuotų read'ų procentas:97,5%
-#o klaidų dažnis 9.022661 e-03, vidutinė kokybė - 32
 
+#Gepard įrankis man sukūrė 3 nuotraukas, kurias pridedu užduotyje. jose atvaizduojamas lyginimas mano genomų vienas su kitu. geriausias sulyginimas yra tarp ERR204* ir SRR182
+#palyginimo nuotraukoje, linija prasideda (0,0) koordinatėje, tai reiškia, kad tai yra tiesioginis atitikimas. Kiti du palyginimai buvo mažiau taiklūs atitikimo atžvilgiu, nes linija neprasidėjo (0,0) taške
+#Padarytas RINGPLOT(iš tiesų - nežinau, ar teisingas, nes lyginau su pateiktu ref. genomu rast duombazėj) rodo identiškus rezultatus, kaip quast - SRR182* atitikimas ir padengtumas yra didesnis
+#nei likusių dviejų, o likę du - panašesni tarpusavyje - prastesni rezultatai, tačiau praktiškai identiški vienas kitam.
+#Šalia gepard ir ringplot taip pat pridedu nuotrauką, kurioje matosi SRR182* ir ERR204* panašumas jau QUAST programoje plot'uose, kai linijos eina iš esmės ta pačia trajektorija.
+#
+#nusikopijuoju naudojamus spades genomus į kitą direktoriją, kad galėčiau sukurti duombazes
+mkdir outputs/DB
+for i in inputs/*_1.fastq.gz;
+do
+    CTG="outputs/assembly/"$(basename ${i} _1.fastq.gz)"_spades/contigs.fasta"
+    cp ${CTG} outputs/DB/"$(basename ${i} _1.fastq.gz)"-contigs.fasta
+    makeblastdb -in outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -dbtype nucl -parse_seqids;
+    makeblastdb -in outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -dbtype prot -parse_seqids;
+    blastn -query refs/GCF_022832545.1_ASM2283254v1_genomic.fna -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta > outputs/DB/$(basename ${i} _1.fastq.gz)-blastgene_info.txt
+    tblastn -query refs/GCF_022832545.1_ASM2283254v1_protein.faa -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta > outputs/DB/$(basename ${i} _1.fastq.gz)-blastprot_info.txt
+    blastn -query refs/GCF_022832545.1_ASM2283254v1_genomic.fna -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -out outputs/DB/$(basename ${i} _1.fastq.gz).fasta.blastn -outfmt 6 -evalue "1e-75";
+    tblastn -query refs/GCF_022832545.1_ASM2283254v1_protein.faa -db outputs/DB/$(basename ${i} _1.fastq.gz)-contigs.fasta -out outputs/DB/$(basename ${i} _1.fastq.gz).fasta.blastn -outfmt 6 -evalue "1e-75";
+done
+#tuomet skaičiuoju nuspėjamų genų kiekį ir overlap. RAST kadangi yra naršyklėje, tai iš ten tiesiog paimu nurodytus skaičius, GeneMarks failai mano pašte,
+#todėl apskaičiuoju naudodama ctrl+f('gene_id') ir išveda kiek iš viso tokių eilučių yra - tai lygu kiek yra genų, o blast rezultatus apskaičiuoju linux aplikoje, naudodama awk '{ print $1 }' blastgene_info.txt | sort -u | wc -l
+#genemarks: ERR204* 2310 genai, SRR151* 2552 genai, SRR182* 2364 genas rastas
+#RAST: ERR204* 2494 genai, SRR151* 2700 genai, SRR182* 2451 genai rasti
+#BLAST: ERR204* 1873 genai, SRR151* 2380 genai, SRR182* 1500 genai rasti
+
+#BUSCO:
+#SRR264 99 proc. complete ir single-copy sekų, 0.5 proc. fragmentuotų, 0.5 proc. trūkstamų.
+#SRR1330 98.5 proc. complete ir single-copy sekų, 0.5 proc. fragmentuotų, 1 proc. trūkstamų.
+#ERR 99 proc. complete ir single-copy sekų, 0.5 proc. fragmentuotų, 0.5 proc. trūkstamų.
+#apskaičiuoti procentai iš summary nuotraukų, kurias pridedu taip pat į užduotį pavadinimais:busco_*
+
+#taigi išvada: SRR182 ir ERR204 yra labai panašiai surinkti genomai tarpusavyje pagal gepard, quest ir ringplot.
 
 #CITATIONS:
 
